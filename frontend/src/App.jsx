@@ -50,18 +50,38 @@ export default function App() {
 
   useEffect(() => { loadData(); }, [authenticatedUser]);
 
-  // Auth: Send OTP (NO AUTO-FILL - USER MUST CHECK GMAIL)
+  // Auth: Send OTP via Backend + EmailJS Direct Dispatch
   const handleSendOtp = async () => {
     if (!formData.email) return showToast('Please enter your email.');
     setLoading(true);
     try {
+      // 1. Backend SQLite database mein OTP generate aur save karo
       const res = await api.post('/auth/send-otp/', { email: formData.email });
       setOtpSent(true);
-      // Explicitly keep OTP input empty so user has to type it manually
       setFormData(prev => ({ ...prev, otp: '' }));
-      showToast('6-digit OTP sent to your Gmail inbox! Please check and enter it.');
+
+      // 2. EmailJS ke zariye direct user ke inbox par real email bhejo
+      try {
+        await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: 'service_t624sia',
+            template_id: 'template_lif4x6u',
+            user_id: '8nCjbFOjFfGtDi-vn',
+            accessToken: 'j1FZLrErnDTzDL6qbcAHf',
+            template_params: {
+              to_email: formData.email,
+              otp_code: res.data.otp
+            }
+          })
+        });
+        showToast('6-digit OTP sent to your Gmail inbox! Please check.');
+      } catch (mailErr) {
+        showToast('OTP generated! Please check your email inbox.');
+      }
     } catch (err) {
-      showToast('Failed to dispatch email.');
+      showToast('Failed to generate OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -69,7 +89,7 @@ export default function App() {
 
   // Auth: Register
   const handleRegister = async () => {
-    if (!formData.otp) return showToast('Please enter the 6-digit OTP sent to your email.');
+    if (!formData.otp) return showToast('Please enter 6-digit OTP from your email.');
     setLoading(true);
     try {
       const res = await api.post('/auth/register-otp/', { ...formData, role: selectedRole });
@@ -227,7 +247,7 @@ export default function App() {
                     <input type="text" placeholder="Company" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} className="liquid-glass px-4 py-2.5 rounded-xl text-xs focus:outline-none w-full" />
                   </div>
                   <div className="flex gap-2">
-                    <input type="email" placeholder="Business Email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="liquid-glass px-4 py-2.5 rounded-xl text-xs focus:outline-none flex-1" />
+                    <input type="email" placeholder="Any Valid Email Address" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="liquid-glass px-4 py-2.5 rounded-xl text-xs focus:outline-none flex-1" />
                     <button onClick={handleSendOtp} disabled={loading} className="bg-white/15 hover:bg-white/25 px-4 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition">
                       {otpSent ? 'Resend' : 'Send OTP'}
                     </button>
@@ -369,7 +389,6 @@ export default function App() {
 
         <main className="my-auto py-8 z-10">
           <AnimatePresence mode="wait">
-            
             {activeTab === 'overview' && (
               <motion.div key="overview" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                 <div className="lg:col-span-7 space-y-6">
@@ -576,7 +595,6 @@ export default function App() {
                 </div>
               </motion.div>
             )}
-
           </AnimatePresence>
         </main>
 
