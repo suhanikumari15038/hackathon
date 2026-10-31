@@ -50,7 +50,7 @@ export default function App() {
 
   useEffect(() => { loadData(); }, [authenticatedUser]);
 
-  // Auth: Send OTP via Backend + EmailJS Direct Dispatch
+  // Auth: Send OTP via Suhani's Verified EmailJS
   const handleSendOtp = async () => {
     if (!formData.email) return showToast('Please enter your email.');
     setLoading(true);
@@ -62,21 +62,26 @@ export default function App() {
 
       // 2. EmailJS ke zariye direct user ke inbox par real email bhejo
       try {
-        await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        const mailResp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            service_id: 'service_t624sia',
-            template_id: 'template_lif4x6u',
-            user_id: '8nCjbFOjFfGtDi-vn',
-            accessToken: 'j1FZLrErnDTzDL6qbcAHf',
+            service_id: 'service_cpqsvgx',
+            template_id: 'template_tq30ck6',
+            user_id: 'ocF8X_8nuv169i7kI',
+            accessToken: 'sXpIejdXo--BOEfSCobfO',
             template_params: {
               to_email: formData.email,
               otp_code: res.data.otp
             }
           })
         });
-        showToast('6-digit OTP sent to your Gmail inbox! Please check.');
+        
+        if (mailResp.ok) {
+          showToast('6-digit OTP sent to your Gmail inbox! Please check.');
+        } else {
+          showToast('OTP generated! Please check your email inbox.');
+        }
       } catch (mailErr) {
         showToast('OTP generated! Please check your email inbox.');
       }
