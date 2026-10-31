@@ -1,5 +1,6 @@
 import re
 import random
+import threading
 from decimal import Decimal
 from datetime import timedelta
 from django.utils import timezone
@@ -34,22 +35,22 @@ def send_otp(request):
     OtpCode.objects.filter(email=email).delete()
     OtpCode.objects.create(email=email, code=code)
 
-    print(f"\n=======================================================")
-    print(f"🔑 [BRIGHTLOOP OTP DISPATCH] -> {email} | CODE: {code}")
-    print(f"=======================================================\n")
+    # Background worker: Cloud firewall block hone par bhi HTTP request kabhi hang nahi hogi!
+    def _bg_mail_worker(to_email, otp_val):
+        try:
+            send_mail(
+                subject='[Brightloop] Security Verification OTP',
+                message=f'Hello,\n\nYour Brightloop security verification code is: {otp_val}\n\nValid for 10 minutes.\n\nTeam Brightloop Software',
+                from_email='warmitul48@gmail.com',
+                recipient_list=[to_email],
+                fail_silently=True,
+            )
+        except Exception as e:
+            print(f"Background mail log: {e}")
 
-    # Safe SMTP attempt (Render Free blocks port 587, so fail_silently=True prevents crash)
-    try:
-        send_mail(
-            subject='[Brightloop] Your 6-Digit Verification OTP',
-            message=f'Hello,\n\nYour Brightloop security verification code is: {code}\n\nValid for 10 minutes.\n\nTeam Brightloop Software',
-            from_email='warmitul48@gmail.com',
-            recipient_list=[email],
-            fail_silently=True,
-        )
-    except Exception as e:
-        print(f"Render cloud notice: {e}")
+    threading.Thread(target=_bg_mail_worker, args=(email, code), daemon=True).start()
 
+    # Instant response in 10ms - No timeout ever!
     return Response({
         "success": True,
         "message": f"6-digit OTP generated for {email}!",
