@@ -35,24 +35,24 @@ def send_otp(request):
     OtpCode.objects.create(email=email, code=code)
 
     print(f"\n=======================================================")
-    print(f"🔑 [BRIGHTLOOP OTP SUCCESS] -> {email}")
-    print(f"⚡ YOUR 6-DIGIT CODE IS: {code}")
+    print(f"🔑 [BRIGHTLOOP OTP DISPATCH] -> {email} | CODE: {code}")
     print(f"=======================================================\n")
 
+    # Safe SMTP attempt (Render Free blocks port 587, so fail_silently=True prevents crash)
     try:
         send_mail(
-            subject='[Brightloop] Security Verification OTP',
-            message=f'Hello,\n\nYour Brightloop 6-digit OTP is: {code}\n\nValid for 10 minutes.\n\nBrightloop Software',
+            subject='[Brightloop] Your 6-Digit Verification OTP',
+            message=f'Hello,\n\nYour Brightloop security verification code is: {code}\n\nValid for 10 minutes.\n\nTeam Brightloop Software',
             from_email='warmitul48@gmail.com',
             recipient_list=[email],
             fail_silently=True,
         )
     except Exception as e:
-        print(f"SMTP Log: {e}")
+        print(f"Render cloud notice: {e}")
 
     return Response({
         "success": True,
-        "message": f"OTP successfully dispatched to {email}!",
+        "message": f"6-digit OTP generated for {email}!",
         "otp": code
     }, status=200)
 
@@ -269,5 +269,3 @@ def admin_create_entity(request):
         return Response({"message": f"Smart Discount Rule '{d.code}' active with limit {d.usage_limit} uses!"})
 
     return Response({"error": "Invalid entity"}, status=400)
-
-# Verified by Divyansh - Billing & Settlement Engine
