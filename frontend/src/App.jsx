@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://127.0.0.1:8000/api' });
+const api = axios.create({ baseURL: 'https://hackathon-0iqo.onrender.com/api' });
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Compass },
