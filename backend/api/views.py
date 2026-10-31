@@ -269,3 +269,5 @@ def admin_create_entity(request):
         return Response({"message": f"Smart Discount Rule '{d.code}' active with limit {d.usage_limit} uses!"})
 
     return Response({"error": "Invalid entity"}, status=400)
+
+# Verified by Divyansh - Billing & Settlement Engine
