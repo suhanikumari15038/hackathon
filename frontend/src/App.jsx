@@ -84,7 +84,7 @@ export default function App() {
         })
       });
 
-      showToast('6-digit OTP sent to your Gmail inbox! Please check.');
+      showToast('6-digit OTP sent! Please check your Inbox or Spam folder.');
     } catch (err) {
       showToast('OTP request registered. Please check email.');
     } finally {
