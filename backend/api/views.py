@@ -1,11 +1,13 @@
+import os
 import re
+import json
 import random
 import threading
+import urllib.request
+import urllib.error
 from decimal import Decimal
 from datetime import timedelta
 from django.utils import timezone
-from django.core.mail import send_mail
-from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import (
@@ -25,6 +27,44 @@ def validate_pw(pw):
         return False, "Password must have at least one special character (!@#$%^&*)."
     return True, "Valid"
 
+def send_resend_email_worker(to_email, otp_code):
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    if not api_key:
+        print("Notice: RESEND_API_KEY not configured in environment.")
+        return
+
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "User-Agent": "Brightloop-Backend"
+    }
+    payload = {
+        "from": "Brightloop <onboarding@resend.dev>",
+        "to": [to_email],
+        "subject": "[Brightloop] Your 6-Digit Security Verification OTP",
+        "html": f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; background: #08090c; color: #ffffff; padding: 32px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: #fbbf24; text-transform: uppercase; margin-bottom: 8px;">Brightloop Software // Security</div>
+            <h2 style="font-size: 22px; margin: 0 0 16px 0; color: #ffffff;">Verify Your Account</h2>
+            <p style="font-size: 14px; color: #a1a1aa; line-height: 1.5;">Use the verification code below to complete your registration or login. This OTP is valid for 10 minutes.</p>
+            <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 18px; text-align: center; margin: 24px 0;">
+                <span style="font-family: monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #4ade80;">{otp_code}</span>
+            </div>
+            <p style="font-size: 12px; color: #71717a; margin-top: 24px; border-top: 1px solid rgba(255,255,210,0.1); padding-top: 16px;">
+                Odoo Hackathon 2026 &bull; Subscription Management Backbone
+            </p>
+        </div>
+        """
+    }
+    try:
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            print(f"✅ Resend Email delivered to {to_email} with HTTP {resp.status}")
+    except Exception as e:
+        print(f"⚠️ Resend Notice: {e}")
+
 @api_view(['POST'])
 def send_otp(request):
     email = (request.data.get('email') or '').strip().lower()
@@ -35,26 +75,13 @@ def send_otp(request):
     OtpCode.objects.filter(email=email).delete()
     OtpCode.objects.create(email=email, code=code)
 
-    # Background worker: Cloud firewall block hone par bhi HTTP request kabhi hang nahi hogi!
-    def _bg_mail_worker(to_email, otp_val):
-        try:
-            send_mail(
-                subject='[Brightloop] Security Verification OTP',
-                message=f'Hello,\n\nYour Brightloop security verification code is: {otp_val}\n\nValid for 10 minutes.\n\nTeam Brightloop Software',
-                from_email='warmitul48@gmail.com',
-                recipient_list=[to_email],
-                fail_silently=True,
-            )
-        except Exception as e:
-            print(f"Background mail log: {e}")
+    print(f"\n🔑 [BRIGHTLOOP OTP DISPATCH] -> {email} | CODE: {code}\n")
 
-    threading.Thread(target=_bg_mail_worker, args=(email, code), daemon=True).start()
+    threading.Thread(target=send_resend_email_worker, args=(email, code), daemon=True).start()
 
-    # Instant response in 10ms - No timeout ever!
     return Response({
         "success": True,
-        "message": f"6-digit OTP generated for {email}!",
-        "otp": code
+        "message": f"6-digit OTP dispatched to {email}! Check your Gmail inbox."
     }, status=200)
 
 @api_view(['POST'])
